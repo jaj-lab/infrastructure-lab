@@ -1,0 +1,61 @@
+---
+- name: Create Vaultwarden directory
+  ansible.builtin.file:
+    path: "{{ vaultwarden_dir }}"
+    state: directory
+    owner: ops
+    group: ops
+    mode: "0755"
+
+- name: Create Vaultwarden certs directory
+  ansible.builtin.file:
+    path: "{{ vaultwarden_certs_dir }}"
+    state: directory
+    owner: ops
+    group: ops
+    mode: "0755"
+
+- name: Copy existing Vaultwarden TLS certificate
+  ansible.builtin.copy:
+    src: "{{ vaultwarden_existing_certs_dir }}/vw.lab.crt"
+    dest: "{{ vaultwarden_certs_dir }}/vw.lab.crt"
+    remote_src: true
+    owner: ops
+    group: ops
+    mode: "0644"
+
+- name: Copy existing Vaultwarden TLS private key
+  ansible.builtin.copy:
+    src: "{{ vaultwarden_existing_certs_dir }}/vw.lab.key"
+    dest: "{{ vaultwarden_certs_dir }}/vw.lab.key"
+    remote_src: true
+    owner: ops
+    group: ops
+    mode: "0600"
+
+- name: Deploy Vaultwarden environment
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ vaultwarden_dir }}/.env"
+    owner: ops
+    group: ops
+    mode: "0600"
+
+- name: Deploy Vaultwarden Compose configuration
+  ansible.builtin.template:
+    src: compose.yaml.j2
+    dest: "{{ vaultwarden_dir }}/compose.yaml"
+    owner: ops
+    group: ops
+    mode: "0644"
+
+- name: Start Vaultwarden
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ vaultwarden_dir }}"
+  become: true
+  register: vaultwarden_compose
+
+- name: Show Vaultwarden deployment result
+  ansible.builtin.debug:
+    var: vaultwarden_compose.stdout_lines

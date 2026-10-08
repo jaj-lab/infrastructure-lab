@@ -18,12 +18,20 @@ jobs:
           cd repo
           git checkout $GITHUB_SHA
 
-      - name: Validate Ansible
+      - name: 'Validate Ansible: Baseline Playbook'
         run: |
           cd repo
           ansible-playbook \
             -i ansible/inventory/hosts.yml \
             ansible/playbooks/app-baseline.yml \
+            --syntax-check
+
+      - name: 'Validate Ansible: Vaultwarden Playbook'
+        run: |
+          cd repo
+          ansible-playbook \
+            -i ansible/inventory/hosts.yml \
+            ansible/playbooks/vaultwarden.yml \
             --syntax-check
 
   deploy:
@@ -45,7 +53,7 @@ jobs:
           printf '%s\n' "${{ secrets.ANSIBLE_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Deploy with Ansible
+      - name: Setup Server Baseline with Ansible
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
@@ -54,3 +62,14 @@ jobs:
             -i ansible/inventory/hosts.yml \
             --private-key ~/.ssh/id_ed25519 \
             ansible/playbooks/app-baseline.yml
+
+            
+      - name: Deploy Vaultwarden with Ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          cd repo
+          ansible-playbook \
+            -i ansible/inventory/hosts.yml \
+            --private-key ~/.ssh/id_ed25519 \
+            ansible/playbooks/vaultwarden.yml

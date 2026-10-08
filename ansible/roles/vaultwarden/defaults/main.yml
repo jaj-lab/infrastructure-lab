@@ -1,0 +1,7 @@
+---
+vaultwarden_dir: /opt/vaultwarden
+vaultwarden_domain: "https://vaultwarden.lab:8443"
+vaultwarden_signups_allowed: "true"
+
+vaultwarden_existing_certs_dir: /home/ops/vaultwarden/certs
+vaultwarden_certs_dir: "{{ vaultwarden_dir }}/certs"

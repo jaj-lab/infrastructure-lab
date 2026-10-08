@@ -1,0 +1,7 @@
+---
+- name: Deploy Vaultwarden
+  hosts: app
+  become: true
+
+  roles:
+    - vaultwarden
