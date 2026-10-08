@@ -11,7 +11,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: builtin/checkout
+        run: |
+          git clone http://192.168.122.10:3000/jaj/infrastructure-lab.git repo
+          cd repo
+          git checkout $GITHUB_SHA
 
       - name: Login to Gitea Registry
         run: |
