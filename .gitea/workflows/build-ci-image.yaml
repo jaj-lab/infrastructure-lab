@@ -3,7 +3,7 @@ name: Build CI Image
 on:
   push:
     paths:
-      - './Dockerfile'
+      - 'Dockerfile'
       - '.gitea/workflows/build-ci-image.yaml'
 
 jobs:
@@ -28,7 +28,6 @@ jobs:
         run: |
           cd repo
           docker build \
-            -f ci/Dockerfile \
             -t 192.168.122.10:3000/jaj/infrastructure-lab-ci:${{ gitea.sha }} \
             -t 192.168.122.10:3000/jaj/infrastructure-lab-ci:latest \
             .
