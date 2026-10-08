@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'ci/Dockerfile'
-      - '.gitea/workflows/build-ci-image.yml'
+      - '.gitea/workflows/build-ci-image.yaml'
 
 jobs:
   build:
