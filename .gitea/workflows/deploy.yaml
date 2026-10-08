@@ -1,0 +1,50 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    container:
+      image: 192.168.122.10:3000/jaj/infrastructure-lab-ci:latest
+
+    steps:
+      - name: Checkout repository
+        run: |
+          git clone http://192.168.122.10:3000/jaj/infrastructure-lab.git repo
+          cd repo
+          git checkout $GITHUB_SHA
+
+      - name: Validate Ansible
+        run: |
+          cd repo
+          ansible-playbook \
+            -i ansible/inventory/hosts.yml \
+            ansible/playbooks/app-baseline.yml \
+            --syntax-check
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: validate
+    container:
+      image: 192.168.122.10:3000/jaj/infrastructure-lab-ci:latest
+
+    steps:
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.ANSIBLE_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Deploy with Ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          cd repo
+          ansible-playbook \
+            -i ansible/inventory/hosts.yml \
+            --private-key ~/.ssh/id_ed25519 \
+            ansible/playbooks/app-baseline.yml
