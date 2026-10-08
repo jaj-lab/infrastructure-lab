@@ -20,7 +20,7 @@ jobs:
 
       - name: Validate Ansible
         run: |
-          cd repo/ansible
+          cd repo
           ansible-playbook \
             -i ansible/inventory/hosts.yml \
             ansible/playbooks/app-baseline.yml \
@@ -49,7 +49,7 @@ jobs:
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
-          cd repo/ansible
+          cd repo
           ansible-playbook \
             -i ansible/inventory/hosts.yml \
             --private-key ~/.ssh/id_ed25519 \
