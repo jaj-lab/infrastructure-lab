@@ -3,7 +3,7 @@ name: Build CI Image
 on:
   push:
     paths:
-      - 'ci/Dockerfile'
+      - 'Dockerfile'
       - '.gitea/workflows/build-ci-image.yaml'
 
 jobs:
