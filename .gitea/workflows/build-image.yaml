@@ -1,0 +1,33 @@
+name: Build and Push Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Gitea Registry
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" | \
+            docker login 192.168.122.10:3000 \
+            --username "${{ secrets.REGISTRY_USER }}" \
+            --password-stdin
+
+      - name: Build image
+        run: |
+          docker build \
+            -t 192.168.122.10:3000/jaj/infrastructure-lab:${{ gitea.sha }} \
+            -t 192.168.122.10:3000/jaj/infrastructure-lab:latest \
+            .
+
+      - name: Push image
+        run: |
+          docker push 192.168.122.10:3000/jaj/infrastructure-lab:${{ gitea.sha }}
+          docker push 192.168.122.10:3000/jaj/infrastructure-lab:latest
