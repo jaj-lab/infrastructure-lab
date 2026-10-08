@@ -20,7 +20,7 @@ jobs:
 
       - name: Validate Ansible
         run: |
-          cd repo
+          cd repo/ansible
           ansible-playbook \
             -i ansible/inventory/hosts.yml \
             ansible/playbooks/app-baseline.yml \
@@ -33,6 +33,12 @@ jobs:
       image: 192.168.122.10:3000/jaj/infrastructure-lab-ci:latest
 
     steps:
+      - name: Checkout repository
+        run: |
+          git clone http://192.168.122.10:3000/jaj/infrastructure-lab.git repo
+          cd repo
+          git checkout $GITHUB_SHA
+
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh
@@ -43,7 +49,7 @@ jobs:
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
-          cd repo
+          cd repo/ansible
           ansible-playbook \
             -i ansible/inventory/hosts.yml \
             --private-key ~/.ssh/id_ed25519 \
