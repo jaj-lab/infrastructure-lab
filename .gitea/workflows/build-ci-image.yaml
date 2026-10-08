@@ -1,0 +1,39 @@
+name: Build CI Image
+
+on:
+  push:
+    paths:
+      - 'ci/Dockerfile'
+      - '.gitea/workflows/build-ci-image.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        run: |
+          git clone http://192.168.122.10:3000/jaj/infrastructure-lab.git repo
+          cd repo
+          git checkout $GITHUB_SHA
+
+      - name: Login to registry
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" | docker login \
+            192.168.122.10:3000 \
+            -u "${{ secrets.REGISTRY_USER }}" \
+            --password-stdin
+
+      - name: Build CI image
+        run: |
+          cd repo
+          docker build \
+            -f ci/Dockerfile \
+            -t 192.168.122.10:3000/jaj/infrastructure-lab-ci:${{ gitea.sha }} \
+            -t 192.168.122.10:3000/jaj/infrastructure-lab-ci:latest \
+            .
+
+      - name: Push CI image
+        run: |
+          docker push 192.168.122.10:3000/jaj/infrastructure-lab-ci:${{ gitea.sha }}
+          docker push 192.168.122.10:3000/jaj/infrastructure-lab-ci:latest
