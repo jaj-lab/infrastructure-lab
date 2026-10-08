@@ -59,6 +59,7 @@ The project is intentionally kept small enough to run on a personal workstation 
 │       │ Gitea    │ │ Docker   │ │ Zabbix   │                │
 │       │ Runner   │ │ Apps     │ │ Server   │                │
 │       │ Registry │ │          │ │          │                │
+│       │ Ansible  │ │Vaultwarden│ │          │                │
 │       └──────────┘ └──────────┘ └──────────┘                │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
@@ -96,7 +97,7 @@ Arch Linux
                     └── ZBX01
 ```
 
-Proxmox VE is therefore the central virtualization platform for the actual lab servers.
+Proxmox VE is the central virtualization platform for the actual lab servers.
 
 The Proxmox VM uses:
 
@@ -131,7 +132,7 @@ Address:
 
 ### GIT01
 
-**Status: Implemented — base server + Gitea**
+**Status: Implemented**
 
 Debian 13 minimal server.
 
@@ -139,9 +140,10 @@ Responsibilities:
 
 * self-hosted Git platform
 * Gitea
-* Git repositories
-* future Gitea Actions runner
-* future container registry workflow
+* Gitea Actions
+* Gitea Runner
+* container registry
+* Ansible controller
 
 Address:
 
@@ -154,11 +156,14 @@ Current services:
 ```text
 GIT01
 ├── Docker Engine
-└── Gitea
-    ├── Web UI
-    ├── Git repositories
-    ├── User authentication
-    └── SSH Git access
+├── Gitea
+│   ├── Web UI
+│   ├── Git repositories
+│   ├── User authentication
+│   ├── SSH Git access
+│   └── Container Registry
+├── Gitea Runner
+└── Ansible
 ```
 
 Gitea Web UI:
@@ -173,11 +178,13 @@ Git SSH:
 ssh://git@192.168.122.10:2222
 ```
 
-Gitea is deployed using Docker Compose with persistent Docker storage.
+The Gitea Runner executes CI/CD jobs using Docker containers.
+
+The built-in Gitea Container Registry is used to store container images.
 
 ### APP01
 
-**Status: Implemented — base server**
+**Status: Implemented**
 
 Debian 13 minimal server.
 
@@ -194,7 +201,18 @@ Address:
 192.168.122.20
 ```
 
-The application layer will be built on top of this server.
+Current services:
+
+```text
+APP01
+├── Docker Engine
+└── Vaultwarden
+    ├── Docker Compose
+    ├── HTTPS
+    └── Persistent data
+```
+
+Vaultwarden is deployed and managed through Ansible.
 
 ### ZBX01
 
@@ -229,22 +247,25 @@ Developer
 │    GIT01    │
 └──────┬──────┘
        │
-       │ Actions
+       │ Gitea Actions
        ▼
 ┌─────────────┐
 │ Gitea Runner│
 │    GIT01    │
 └──────┬──────┘
        │
-       │ build / test / deploy
+       │ Ansible
        ▼
 ┌─────────────┐
 │    APP01    │
 │    Docker   │
-└─────────────┘
+└──────┬──────┘
+       │
+       ▼
+  Vaultwarden
 ```
 
-This creates a complete self-hosted development and deployment workflow without relying on GitHub, GitLab, or a cloud CI platform.
+This creates a self-hosted development and deployment workflow without relying on GitHub, GitLab, or a cloud CI platform.
 
 ## Gitea
 
@@ -264,9 +285,7 @@ Git access is provided through SSH:
 ssh://git@192.168.122.10:2222/jaj/infrastructure-lab.git
 ```
 
-The Git workflow has been tested with SSH authentication.
-
-The intended workflow is:
+The Git workflow has been tested with:
 
 ```text
 clone
@@ -287,72 +306,109 @@ Gitea
 pull
 ```
 
-## Containerization
+Gitea Actions is used for CI/CD automation.
 
-Docker is used in two different roles.
+The Gitea Runner is registered on GIT01 and executes jobs using Docker.
 
-### GIT01
+## Container Registry
 
-Docker provides the infrastructure runtime for:
+**Status: Implemented**
 
-* Gitea
-* Gitea Runner
-* CI-related tooling
+Gitea's built-in OCI-compatible Container Registry is used instead of deploying a separate registry service.
 
-### APP01
+The registry is available through:
 
-Docker provides the application runtime for:
+```text
+192.168.122.10:3000
+```
 
-* application services
-* Vaultwarden
-* future deployed workloads
+Container images can be built, pushed, pulled, and executed through the registry.
 
-This separation keeps the Git/CI infrastructure independent from the application host.
+Example:
+
+```text
+Docker build
+     │
+     ▼
+Gitea Runner
+     │
+     ▼
+Gitea Container Registry
+     │
+     ├── push
+     │
+     └── pull
+```
+
+Because the lab registry uses HTTP rather than HTTPS, the Docker daemon on GIT01 is configured to explicitly allow the lab registry as an insecure registry.
 
 ## Ansible
 
-**Status: Planned**
+**Status: Implemented**
 
-GIT01 will act as the Ansible controller.
+GIT01 acts as the Ansible controller.
 
-The goal is to configure APP01 reproducibly instead of performing all configuration manually.
-
-Planned structure:
+Ansible is stored in the same Git repository as the infrastructure configuration:
 
 ```text
-GIT01
-└── Ansible
-    ├── inventory
-    ├── playbooks
-    └── roles
-            │
-            ▼
-          APP01
+infrastructure-lab/
+├── ansible.cfg
+└── ansible/
+    ├── inventory/
+    ├── playbooks/
+    └── roles/
 ```
 
-Ansible will manage tasks such as:
+Current playbooks:
 
-* user configuration
+```text
+ansible/
+├── inventory/
+│   └── hosts.yml
+├── playbooks/
+│   ├── app-baseline.yml
+│   └── vaultwarden.yml
+└── roles/
+    ├── users/
+    ├── ssh/
+    ├── packages/
+    ├── docker/
+    └── vaultwarden/
+```
+
+The baseline configuration manages:
+
+* service users
 * SSH configuration
-* package installation
-* system configuration
-* Docker prerequisites
-* application prerequisites
+* baseline packages
+* Docker repository and packages
+* Docker service
+* Docker group membership
 
-A key verification point will be idempotency:
+The Vaultwarden role manages:
+
+* application directory
+* TLS certificate and key
+* application environment
+* Docker Compose configuration
+* Vaultwarden deployment
+
+The baseline playbook has been verified for idempotency:
 
 ```text
 First run  → changes
 Second run → 0 changes
 ```
 
+A controlled drift test was also performed by stopping Docker manually and allowing Ansible to restore the desired state.
+
 ## Application Layer
 
-**Status: Planned**
+**Status: Implemented — Vaultwarden**
 
-APP01 will host the application workloads using Docker.
+APP01 hosts application workloads using Docker.
 
-The first major service will be Vaultwarden.
+The first application is Vaultwarden:
 
 ```text
 APP01
@@ -360,25 +416,41 @@ APP01
 └── Docker
     │
     └── Vaultwarden
-         │
+         ├── HTTPS
          └── persistent data
 ```
 
-The deployment will use:
+Vaultwarden is deployed using:
 
 * Docker Compose
-* persistent volumes
-* configuration separated from secrets
-* controlled restart behavior
-* reproducible deployment
+* persistent Docker volume
+* Ansible configuration management
+* built-in Rocket TLS
+* self-signed lab certificate
+* configuration stored outside the Git repository where appropriate
 
-Secrets will not be committed to Git.
+Vaultwarden is accessible at:
+
+```text
+https://192.168.122.20:8443
+```
+
+The application has been tested for:
+
+* container startup
+* HTTPS access
+* user registration and login
+* persistent data
+* container recreation
+* Docker Compose deployment
+
+Secrets and private keys are not committed to Git.
 
 ## CI/CD
 
-**Status: Planned**
+**Status: Implemented — deployment pipeline**
 
-The target delivery workflow is:
+The current CI/CD workflow is:
 
 ```text
 Developer
@@ -391,10 +463,14 @@ Gitea
     ▼
 Gitea Runner
     │
-    ├── validate
-    ├── test
-    ├── build
-    └── deploy
+    ├── Validate app-baseline.yml
+    ├── Validate vaultwarden.yml
+    │
+    ▼
+    ├── Run app-baseline.yml
+    │
+    ▼
+    └── Run vaultwarden.yml
             │
             ▼
           APP01
@@ -403,24 +479,59 @@ Gitea Runner
           Docker
             │
             ▼
-       Application
+       Vaultwarden
 ```
 
-The pipeline should demonstrate both successful and failed deployments.
-
-A successful change should result in:
+The pipeline is stored in:
 
 ```text
-commit
-  → push
-  → pipeline
-  → validation
-  → build
-  → deployment
-  → running application
+.gitea/workflows/deploy.yaml
 ```
 
-A deliberately broken change should fail during the pipeline and prevent deployment.
+The deployment pipeline performs two stages.
+
+### Validation
+
+Both Ansible playbooks are syntax-checked before deployment:
+
+```text
+app-baseline.yml
+        │
+        ├── syntax-check
+        │
+        ▼
+vaultwarden.yml
+        │
+        └── syntax-check
+```
+
+The deployment job depends on successful validation.
+
+```yaml
+needs: validate
+```
+
+Therefore a validation failure prevents the deployment job from running.
+
+### Deployment
+
+After successful validation, the pipeline:
+
+1. checks out the repository
+2. prepares the Ansible SSH key from Gitea Secrets
+3. runs the APP01 baseline playbook
+4. runs the Vaultwarden deployment playbook
+
+The CI environment uses a dedicated container image containing:
+
+* Ansible
+* OpenSSH client
+* Git
+* CA certificates
+
+The repository is the source of truth for the deployment configuration.
+
+A new server still requires minimal bootstrap access such as networking, SSH, and initial credentials before Ansible can take over the configuration.
 
 ## Monitoring
 
@@ -515,23 +626,23 @@ The goal is not simply to fix the issue, but to demonstrate a structured trouble
 │ DEVOPS PLATFORM                             │
 ├─────────────────────────────────────────────┤
 │ Phase 5  Gitea                           [✓] │
-│ Phase 6  Runner + Registry                [ ] │
-│ Phase 7  Ansible baseline                 [ ] │
+│ Phase 6  Runner + Registry                [✓] │
+│ Phase 7  Ansible baseline                 [✓] │
 └─────────────────────────────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────────┐
 │ APPLICATION                                 │
 ├─────────────────────────────────────────────┤
-│ Phase 8  Docker APP01                     [ ] │
-│ Phase 9  Vaultwarden                      [ ] │
+│ Phase 8  Docker APP01                     [✓] │
+│ Phase 9  Vaultwarden                      [✓] │
 └─────────────────────────────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────────┐
 │ DELIVERY                                    │
 ├─────────────────────────────────────────────┤
-│ Phase 10 CI/CD                            [ ] │
+│ Phase 10 CI/CD                            [~] │
 └─────────────────────────────────────────────┘
                     │
                     ▼
@@ -550,6 +661,8 @@ The goal is not simply to fix the issue, but to demonstrate a structured trouble
 │ Phase 14 Documentation                    [ ] │
 └─────────────────────────────────────────────┘
 ```
+
+`[~]` indicates that the main CI/CD deployment workflow is implemented, with final idempotency and failure-path verification still remaining.
 
 ## Current Status
 
@@ -571,61 +684,66 @@ The goal is not simply to fix the issue, but to demonstrate a structured trouble
 * Docker installed on GIT01
 * Gitea deployed using Docker Compose
 * Gitea Web UI configured
-* Gitea user created
-* Gitea repository created
-* SSH authentication from Arch host verified
+* Gitea user and repository created
+* SSH Git authentication verified
+* Gitea Actions Runner deployed and registered
+* Gitea Actions workflow execution verified
+* Gitea Container Registry configured
+* Container image push/pull verified
+* Ansible controller configured on GIT01
+* APP01 baseline automated with Ansible
+* Ansible idempotency verified
+* Docker installed and managed through Ansible
+* Docker application platform verified on APP01
+* Vaultwarden deployed with Docker Compose
+* Vaultwarden HTTPS configured
+* Vaultwarden persistence verified
+* CI image created for Ansible deployment
+* Gitea Actions validation stage implemented
+* Automated Ansible deployment to APP01 implemented
+* CI/CD deployment successfully tested end-to-end
 
 ### In Progress / Next
 
-* Gitea Runner
-* Container Registry workflow
-* Ansible baseline
-* Docker application platform on APP01
-* Vaultwarden
-* CI/CD
-* Zabbix
+* Verify CI/CD idempotency
+* Verify CI/CD failure gate
+* ZBX01
+* Zabbix monitoring
 * Incident/RCA scenarios
 * Final documentation
 
 ## Repository Structure
 
-The repository will evolve together with the infrastructure.
-
-A target structure is:
+The repository reflects the actual infrastructure implementation:
 
 ```text
 infrastructure-lab/
-├── README.md
+├── .gitea/
+│   └── workflows/
+│       └── deploy.yaml
 │
 ├── ansible/
 │   ├── inventory/
+│   │   └── hosts.yml
 │   ├── playbooks/
+│   │   ├── app-baseline.yml
+│   │   └── vaultwarden.yml
 │   └── roles/
+│       ├── users/
+│       ├── ssh/
+│       ├── packages/
+│       ├── docker/
+│       └── vaultwarden/
 │
-├── gitea/
-│   └── compose.yaml
+├── ci/
+│   └── Dockerfile
 │
-├── docker/
-│   └── ...
-│
-├── applications/
-│   └── vaultwarden/
-│       ├── compose.yaml
-│       └── ...
-│
-├── monitoring/
-│   └── zabbix/
-│
-├── docs/
-│   ├── architecture.md
-│   ├── networking.md
-│   ├── operations.md
-│   └── incidents/
-│
-└── .gitignore
+├── ansible.cfg
+├── Dockerfile
+└── README.md
 ```
 
-The repository structure will reflect the actual implementation rather than documenting components that do not yet exist.
+The repository structure evolves together with the infrastructure rather than documenting components that do not yet exist.
 
 ## Design Principles
 
@@ -663,7 +781,7 @@ The objective is to demonstrate infrastructure engineering fundamentals clearly.
 
 Infrastructure configuration should be reproducible wherever practical.
 
-Manual configuration is used when appropriate, but recurring configuration should progressively move into:
+Manual configuration is used when appropriate, but recurring configuration progressively moves into:
 
 * Git
 * Ansible
@@ -728,8 +846,9 @@ The lab is intended to demonstrate practical ability to:
 * work with Docker and Docker Compose
 * manage Git infrastructure
 * automate server configuration with Ansible
-* build CI/CD pipelines
+* build self-hosted CI/CD pipelines
 * deploy applications through automation
+* manage container images through a registry
 * monitor infrastructure
 * investigate infrastructure failures
 * perform root-cause analysis
@@ -748,19 +867,23 @@ A complete demonstration of the project should follow a practical path:
        ↓
 4. Show Gitea
        ↓
-5. Push a change
+5. Show Ansible
        ↓
-6. Show CI/CD pipeline
+6. Push a change
        ↓
-7. Show deployment on APP01
+7. Show CI/CD pipeline
        ↓
-8. Show Zabbix monitoring
+8. Show automated deployment on APP01
        ↓
-9. Introduce a controlled failure
+9. Show Vaultwarden
        ↓
-10. Troubleshoot it
+10. Show Zabbix monitoring
        ↓
-11. Show RCA
+11. Introduce a controlled failure
+       ↓
+12. Troubleshoot it
+       ↓
+13. Show RCA
 ```
 
 The objective is to demonstrate not only that the services work, but that the infrastructure can be **operated, automated, monitored, troubleshot, and explained**.
@@ -772,4 +895,3 @@ This project represents practical home-lab experience.
 Technologies implemented here should not be presented as commercial production experience unless separately supported by professional work experience.
 
 The value of the project is demonstrating hands-on understanding of infrastructure concepts and the ability to build and operate a small environment end-to-end.
-
