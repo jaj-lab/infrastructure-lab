@@ -1,4 +1,4 @@
-name: Runner Test
+name: Test Image
 
 on:
   push:
@@ -10,8 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Runner information
+      - name: Login to Gitea Registry
         run: |
-          echo "Runner is working"
-          uname -a
-          echo "Job completed successfully"
+          echo "${{ secrets.REGISTRY_TOKEN }}" | \
+            docker login 192.168.122.10:3000 \
+            --username "${{ secrets.REGISTRY_USER }}" \
+            --password-stdin
+
+      - name: Pull image
+        run: |
+          docker pull 192.168.122.10:3000/jaj/infrastructure-lab:latest
+
+      - name: Run image
+        run: |
+          output=$(docker run --rm \
+            192.168.122.10:3000/jaj/infrastructure-lab:latest)
+
+          echo "$output"
+
+          test "$output" = "Infrastructure Lab image works!"
+
+      - name: Show image
+        run: |
+          docker images 192.168.122.10:3000/jaj/infrastructure-lab
