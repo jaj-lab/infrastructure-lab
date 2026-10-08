@@ -19,12 +19,12 @@ jobs:
 
       - name: Pull image
         run: |
-          docker pull 192.168.122.10:3000/jaj/infrastructure-lab:latest
+          docker pull 192.168.122.10:3000/jaj/infrastructure-lab-ci:latest
 
       - name: Run image
         run: |
           output=$(docker run --rm \
-            192.168.122.10:3000/jaj/infrastructure-lab:latest)
+            192.168.122.10:3000/jaj/infrastructure-lab-ci:latest)
 
           echo "$output"
 
@@ -32,4 +32,4 @@ jobs:
 
       - name: Show image
         run: |
-          docker images 192.168.122.10:3000/jaj/infrastructure-lab
+          docker images 192.168.122.10:3000/jaj/infrastructure-lab-ci

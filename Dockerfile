@@ -1,3 +1,9 @@
-FROM alpine:3.22
+FROM debian:13-slim
 
-CMD ["sh", "-c", "echo 'Infrastructure Lab image works!'"]
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ansible \
+        openssh-client \
+        git \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
