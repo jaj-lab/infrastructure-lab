@@ -1,0 +1,17 @@
+#SPDX-License-Identifier: MIT-0
+
+---
+
+- name: Ensure SSH service is enabled and running
+  ansible.builtin.service:
+    name: ssh
+    enabled: true
+    state: started
+
+- name: Configure SSH public key authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PubkeyAuthentication'
+    line: 'PubkeyAuthentication yes'
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: Restart SSH

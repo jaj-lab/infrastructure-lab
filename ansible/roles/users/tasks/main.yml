@@ -1,0 +1,20 @@
+#SPDX-License-Identifier: MIT-0
+#
+---
+- name: Create ansible service user
+  ansible.builtin.user:
+    name: ansible
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+    state: present
+
+- name: Create ops user
+  ansible.builtin.user:
+    name: ops
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+    state: present

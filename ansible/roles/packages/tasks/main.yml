@@ -1,0 +1,16 @@
+#SPDX-License-Identifier: MIT-0
+
+---
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - git
+      - vim
+      - htop
+      - ca-certificates
+      - sudo
+      - tree
+    state: present
+    update_cache: true

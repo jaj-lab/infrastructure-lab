@@ -1,0 +1,10 @@
+---
+- name: Configure application server
+  hosts: app
+  become: true
+
+  roles:
+    - users
+    - ssh
+    - packages
+    - docker
