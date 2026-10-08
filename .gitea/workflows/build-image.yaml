@@ -25,6 +25,7 @@ jobs:
 
       - name: Build image
         run: |
+          cd repo
           docker build \
             -t 192.168.122.10:3000/jaj/infrastructure-lab:${{ gitea.sha }} \
             -t 192.168.122.10:3000/jaj/infrastructure-lab:latest \
