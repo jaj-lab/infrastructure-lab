@@ -17,8 +17,8 @@
 
 - name: Copy existing Vaultwarden TLS certificate
   ansible.builtin.copy:
-    src: "{{ vaultwarden_existing_certs_dir }}/vw.lab.crt"
-    dest: "{{ vaultwarden_certs_dir }}/vw.lab.crt"
+    src: "{{ vaultwarden_existing_certs_dir }}/vaultwarden.lab.crt"
+    dest: "{{ vaultwarden_certs_dir }}/vaultwarden.lab.crt"
     remote_src: true
     owner: ops
     group: ops
@@ -26,8 +26,8 @@
 
 - name: Copy existing Vaultwarden TLS private key
   ansible.builtin.copy:
-    src: "{{ vaultwarden_existing_certs_dir }}/vw.lab.key"
-    dest: "{{ vaultwarden_certs_dir }}/vw.lab.key"
+    src: "{{ vaultwarden_existing_certs_dir }}/vaultwarden.lab.key"
+    dest: "{{ vaultwarden_certs_dir }}/vaultwarden.lab.key"
     remote_src: true
     owner: ops
     group: ops
